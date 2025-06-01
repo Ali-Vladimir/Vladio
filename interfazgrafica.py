@@ -40,6 +40,10 @@ def resaltar_sintaxis(event=None):
                 txt_codigo.tag_add("numero", start, end)
             elif token.type == 'CADENA':
                 txt_codigo.tag_add("cadena", start, end)
+                # Resaltar los delimitadores &
+                end_delim = f"1.0 + {token.lexpos + len(str(token.value)) + 1} chars"
+                txt_codigo.tag_add("simbolo", start, f"{start} + 1 chars")
+                txt_codigo.tag_add("simbolo", end, end_delim)
             elif token.type in ('PLUS', 'MINUS', 'TIMES', 'DIVIDE', 'EQUALS', 'EQ', 'NE', 'LT', 'LE', 'GT', 'GE', 'AND', 'OR'):
                 txt_codigo.tag_add("operador", start, end)
             elif token.type in ('COLON', 'SEMICOLON', 'COMMA', 'LBRACKET', 'RBRACKET', 'LBRACE', 'RBRACE'):
@@ -63,7 +67,7 @@ def compilar(text_widget):
             if token is None:
                 continue
             tokens.append((token.value, token.type))
-            if token.type in ('IDENTIFICADOR', 'NUMERO'):
+            if token.type in ('IDENTIFICADOR', 'NUMERO', 'CADENA') or token.type in palabras_reservadas.values():
                 add_symbol(str(token.value), token.type)
     except Exception as e:
         errores.add(f"Error léxico: {e}")
@@ -106,16 +110,19 @@ def cargar_archivo(text_widget):
 
 # Mostrar tabla de símbolos
 def mostrar_tabla_simbolos():
-    symbols = load_tabla_simbolos()
-    ventana = tk.Toplevel(root)
-    ventana.title("Tabla de Símbolos")
-    txt_tabla = scrolledtext.ScrolledText(ventana, width=50, height=20, font=("Consolas", 12))
-    txt_tabla.pack(padx=5, pady=5)
-    if symbols:
-        for ident, tipo in symbols:
-            txt_tabla.insert(tk.END, f"{ident} - {tipo}\n")
-    else:
-        txt_tabla.insert(tk.END, "La tabla de símbolos está vacía.")
+    try:
+        symbols = load_tabla_simbolos()
+        ventana = tk.Toplevel(root)
+        ventana.title("Tabla de Símbolos")
+        txt_tabla = scrolledtext.ScrolledText(ventana, width=50, height=20, font=("Consolas", 12))
+        txt_tabla.pack(padx=5, pady=5)
+        if symbols:
+            for ident, tipo in symbols:
+                txt_tabla.insert(tk.END, f"{ident} - {tipo}\n")
+        else:
+            txt_tabla.insert(tk.END, "La tabla de símbolos está vacía.")
+    except Exception as e:
+        print(f"Error al mostrar tabla de símbolos: {e}")
 
 # Configuración de la interfaz gráfica
 root = tk.Tk()

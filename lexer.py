@@ -65,8 +65,8 @@ def t_NUMERO(t):
 
 # AFD para cadenas
 def t_CADENA(t):
-    r'"[^"]*"'
-    t.value = t.value[1:-1]  # Quitar comillas
+    r'&[^&]*&'
+    t.value = t.value[1:-1]  # Quitar los delimitadores &
     return t
 
 # AFD para identificadores y palabras reservadas

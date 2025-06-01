@@ -2,7 +2,7 @@ inicio
     var _edad : ChicoEntero;
     var _nombre : string;
     var _esMayor : VerdaderoOFalso;
-    _nombre = "Juan";
+    _nombre = &Juan&;
     _edad = 20;
     PreguntaExistencial [_edad >= 18] ¿
         _esMayor = verdad;
@@ -13,7 +13,7 @@ inicio
         _edad = _edad + 1;
     ?
     Cuatro [_edad = 0; _edad < 5; _edad = _edad + 1] ¿
-        _nombre = "Iteración";
+        _nombre = &Iteración&;
     ?
     DoMientras ¿
         _edad = _edad - 1;
@@ -25,10 +25,10 @@ inicio
     ?
     switch [_edad] ¿
         Opcion 20: ¿
-            _nombre = "Veinte";
+            _nombre = &Veinte&;
         ?
         default: ¿
-            _nombre = "Otro";
+            _nombre = &Otro&;
         ?
     ?
     _imprimir [_nombre, _edad];

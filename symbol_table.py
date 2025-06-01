@@ -1,87 +1,69 @@
-import struct
+import pickle
 import os
-import json
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-TABLA_SIMBOLOS_PATH = os.path.join(BASE_DIR, "tabla_simbolos.dat")
-RECORD_FORMAT = "30s20sI"  # Identificador, tipo, índice de siguiente (para colisiones)
-RECORD_SIZE = struct.calcsize(RECORD_FORMAT)
+# Configuración
+TABLE_SIZE = 100
+RECORD_SIZE = 1024  # Aumentar tamaño para manejar listas más grandes
+SYMBOLS_FILE = "tabla_simbolos.dat"
 
-# Función hash FNV-1a
-def fnv1a_hash(token):
-    FNV_PRIME = 16777619
-    FNV_OFFSET = 2166136261
-    hash_value = FNV_OFFSET
-    for char in str(token).encode('utf-8'):
-        hash_value = (hash_value ^ char) * FNV_PRIME
-        hash_value &= 0xFFFFFFFF  # Limitar a 32 bits
-    return hash_value % 1000  # Limitar el índice a 1000 posiciones
+# Función hash FNV-1
+def hash_token(token):
+    hash_value = 2166136261  # FNV offset basis
+    for char in str(token):
+        hash_value = (hash_value * 16777619) ^ ord(char)  # FNV prime
+    return hash_value % TABLE_SIZE
 
+# Inicializar el archivo de tabla de símbolos
 def init_tabla_simbolos_file():
-    """Crea o limpia el archivo de la Tabla de Símbolos."""
-    with open(TABLA_SIMBOLOS_PATH, "wb") as f:
-        f.write(b'\x00' * RECORD_SIZE * 1000)  # Inicializar 1000 posiciones
+    with open(SYMBOLS_FILE, "wb") as f:
+        for _ in range(TABLE_SIZE):
+            pickle.dump([], f)  # Cada posición es una lista vacía
+            # Rellenar con ceros hasta RECORD_SIZE
+            f.write(b'\x00' * (RECORD_SIZE - f.tell() % RECORD_SIZE))
 
-def add_symbol(identifier, token_type):
-    """Agrega un símbolo a la tabla de símbolos usando hash."""
-    identifier = str(identifier).strip()
-    index = fnv1a_hash(identifier)
-    
-    with open(TABLA_SIMBOLOS_PATH, "rb+") as f:
-        f.seek(index * RECORD_SIZE)
-        record_bytes = f.read(RECORD_SIZE)
-        
-        # Si la posición está vacía
-        if record_bytes == b'\x00' * RECORD_SIZE:
-            rec_id_bytes = identifier.encode('utf-8').ljust(30, b' ')[:30]
-            token_type_bytes = token_type.encode('utf-8').ljust(20, b' ')[:20]
-            f.seek(index * RECORD_SIZE)
-            f.write(struct.pack(RECORD_FORMAT, rec_id_bytes, token_type_bytes, 0))
-            return
-        
-        # Manejo de colisiones con encadenamiento
-        while True:
-            rec_id, rec_type, next_index = struct.unpack(RECORD_FORMAT, record_bytes)
-            rec_id = rec_id.decode('utf-8').strip()
-            if rec_id == identifier:
-                return  # Símbolo ya existe
-            if next_index == 0:
-                # Encontrar nueva posición para colisión
-                new_index = fnv1a_hash(identifier + str(index)) % 1000
-                while True:
-                    f.seek(new_index * RECORD_SIZE)
-                    record_bytes = f.read(RECORD_SIZE)
-                    if record_bytes == b'\x00' * RECORD_SIZE:
-                        break
-                    new_index = (new_index + 1) % 1000
-                # Actualizar el índice de la posición actual
-                f.seek(index * RECORD_SIZE)
-                f.write(struct.pack(RECORD_FORMAT, rec_id.encode('utf-8').ljust(30, b' ')[:30], 
-                                   rec_type.decode('utf-8').ljust(20, b' ')[:20], new_index))
-                # Escribir el nuevo símbolo
-                f.seek(new_index * RECORD_SIZE)
-                f.write(struct.pack(RECORD_FORMAT, identifier.encode('utf-8').ljust(30, b' ')[:30], 
-                                   token_type.encode('utf-8').ljust(20, b' ')[:20], 0))
-                return
-            index = next_index
-            f.seek(index * RECORD_SIZE)
-            record_bytes = f.read(RECORD_SIZE)
-
-def load_tabla_simbolos():
-    """Carga la tabla de símbolos desde el archivo binario."""
+# Agregar un símbolo a la tabla
+def add_symbol(value, token_type):
+    position = hash_token(value)
     symbols = []
+    
+    # Leer la lista existente en la posición
     try:
-        with open(TABLA_SIMBOLOS_PATH, "rb") as f:
-            for index in range(1000):
-                f.seek(index * RECORD_SIZE)
-                record_bytes = f.read(RECORD_SIZE)
-                if record_bytes == b'\x00' * RECORD_SIZE:
-                    continue
-                rec_id, rec_type, _ = struct.unpack(RECORD_FORMAT, record_bytes)
-                rec_id = rec_id.decode('utf-8').strip()
-                rec_type = rec_type.decode('utf-8').strip()
-                if rec_id:
-                    symbols.append((rec_id, rec_type))
+        with open(SYMBOLS_FILE, "r+b") as f:
+            f.seek(position * RECORD_SIZE)
+            try:
+                symbols = pickle.load(f)
+            except (EOFError, pickle.UnpicklingError):
+                symbols = []
+            
+            # Verificar si el símbolo ya existe
+            for sym in symbols:
+                if sym[0] == value and sym[1] == token_type:
+                    return
+            
+            # Agregar nuevo símbolo
+            symbols.append((value, token_type))
+            
+            # Reescribir la lista en la posición
+            f.seek(position * RECORD_SIZE)
+            pickle.dump(symbols, f)
     except FileNotFoundError:
-        pass
+        init_tabla_simbolos_file()
+        add_symbol(value, token_type)  # Reintentar
+
+# Cargar todos los símbolos
+def load_tabla_simbolos():
+    symbols = []
+    if not os.path.exists(SYMBOLS_FILE):
+        init_tabla_simbolos_file()
+        return symbols
+    
+    with open(SYMBOLS_FILE, "rb") as f:
+        for i in range(TABLE_SIZE):
+            try:
+                f.seek(i * RECORD_SIZE)
+                bucket = pickle.load(f)
+                if isinstance(bucket, list):
+                    symbols.extend(bucket)
+            except (EOFError, pickle.UnpicklingError):
+                continue
     return symbols
