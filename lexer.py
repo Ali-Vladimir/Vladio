@@ -9,7 +9,7 @@ with open(JSON_PATH, "r", encoding="utf-8") as archivo:
     tabla_simbolos_json = json.load(archivo)
 
 # Extraer palabras reservadas y operadores
-palabras_reservadas = {item["token"]: item["token"].upper() for item in tabla_simbolos_json["palabras_reservadas"]}
+palabras_reservadas = {item["original"]: item["token"].upper() for item in tabla_simbolos_json["palabras_reservadas"]}
 operadores = set(
     tabla_simbolos_json["operadores_aritmeticos"] +
     tabla_simbolos_json["operadores_asignacion"] +
@@ -19,7 +19,7 @@ operadores = set(
 simbolos_puntuacion = set(tabla_simbolos_json["simbolos_puntuacion"])
 
 # Lista de tokens
-tokens = list(palabras_reservadas.values()) + [
+tokens = list(set(palabras_reservadas.values())) + [
     'IDENTIFICADOR', 'NUMERO', 'CADENA',
     'PLUS', 'MINUS', 'TIMES', 'DIVIDE',
     'EQUALS', 'EQ', 'NE', 'LT', 'LE', 'GT', 'GE',
@@ -50,7 +50,7 @@ t_SEMICOLON = r';'
 t_COMMA = r','
 
 # Ignorar espacios, tabulaciones y saltos de línea
-t_ignore = r'[ \t\n]+'
+t_ignore = ' \t\n'
 
 # Ignorar comentarios
 def t_COMENTARIO(t):
@@ -71,8 +71,12 @@ def t_CADENA(t):
 
 # AFD para identificadores y palabras reservadas
 def t_IDENTIFICADOR(t):
-    r'_[a-zA-Z][a-zA-Z0-9]*'
+    r'[a-zA-Z_][a-zA-Z0-9]*'
     t.type = palabras_reservadas.get(t.value, 'IDENTIFICADOR')
+    if t.type == 'IDENTIFICADOR' and not t.value.startswith('_'):
+        print(f"Error léxico en línea {t.lineno}: identificador '{t.value}' debe comenzar con '_'")
+        t.lexer.skip(len(t.value))
+        return None
     return t
 
 # Manejo de errores

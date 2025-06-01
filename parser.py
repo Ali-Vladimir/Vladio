@@ -14,7 +14,10 @@ precedence = (
     ('left', 'AND'),
     ('nonassoc', 'EQ', 'NE', 'LT', 'LE', 'GT', 'GE'),
     ('left', 'PLUS', 'MINUS'),
-    ('left', 'TIMES', 'DIVIDE')
+    ('left', 'TIMES', 'DIVIDE'),
+    ('right', 'EQUALS'),
+    ('nonassoc', 'LBRACKET', 'RBRACKET'),
+    ('nonassoc', 'PREGUNTAEXISTENCIAL', 'MIENTRAS', 'CUATRO')
 )
 
 # Reglas de la gramática
@@ -81,6 +84,10 @@ def p_decision(p):
     '''decision : PREGUNTAEXISTENCIAL LBRACKET expresion RBRACKET bloque PUESSINO bloque'''
     p[0] = Node('decision', [p[3], p[5], p[7]])
 
+def p_decision_solo_if(p):
+    '''decision : PREGUNTAEXISTENCIAL LBRACKET expresion RBRACKET bloque'''
+    p[0] = Node('decision', [p[3], p[5]])
+
 def p_ciclo(p):
     '''ciclo : MIENTRAS LBRACKET expresion RBRACKET bloque'''
     p[0] = Node('ciclo', [p[3], p[5]])
@@ -90,7 +97,7 @@ def p_para(p):
     p[0] = Node('para', [p[3], p[4], p[6], p[8]])
 
 def p_do_mientras(p):
-    '''do_mientras : DOMIENTRAS bloque MIENTRAS LBRACKET expresion RBRACKET SEMICOLON'''
+    '''do_mientras : DOMIENTRAS bloque MIENTRAS_POST LBRACKET expresion RBRACKET SEMICOLON'''
     p[0] = Node('do_mientras', [p[2], p[5]])
 
 def p_tratamiento_error(p):
@@ -110,16 +117,16 @@ def p_casos(p):
         p[0] = Node('casos', p[1].children + [p[2]])
 
 def p_caso(p):
-    '''caso : OPCION valor COLON instrucciones'''
+    '''caso : OPCION valor COLON bloque'''
     p[0] = Node('caso', [p[2], p[4]])
 
 def p_defecto(p):
-    '''defecto : DEFAULT COLON instrucciones'''
+    '''defecto : DEFAULT COLON bloque'''
     p[0] = Node('defecto', [p[3]])
 
 def p_llamada_funcion(p):
-    '''llamada_funcion : IDENTIFICADOR LBRACKET lista_expresiones RBRACKET SEMICOLON'''
-    p[0] = Node('llamada_funcion', [Node('identificador', value=p[1]), p[3]])
+    '''llamada_funcion : PRINT LBRACKET lista_expresiones RBRACKET SEMICOLON'''
+    p[0] = Node('llamada_funcion', [Node('identificador', value='_imprimir'), p[3]])
 
 def p_lista_expresiones(p):
     '''lista_expresiones : expresion

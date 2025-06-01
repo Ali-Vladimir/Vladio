@@ -1,0 +1,35 @@
+inicio
+    var _edad : ChicoEntero;
+    var _nombre : string;
+    var _esMayor : VerdaderoOFalso;
+    _nombre = "Juan";
+    _edad = 20;
+    PreguntaExistencial [_edad >= 18] ¿
+        _esMayor = verdad;
+    ? PuesSiNo ¿
+        _esMayor = fake;
+    ?
+    Mientras [_edad < 25] ¿
+        _edad = _edad + 1;
+    ?
+    Cuatro [_edad = 0; _edad < 5; _edad = _edad + 1] ¿
+        _nombre = "Iteración";
+    ?
+    DoMientras ¿
+        _edad = _edad - 1;
+    ? mientras [_edad > 18];
+    intenta ¿
+        _edad = _edad / 0;
+    ? AgarraElError [_e] ¿
+        _edad = -1;
+    ?
+    switch [_edad] ¿
+        Opcion 20: ¿
+            _nombre = "Veinte";
+        ?
+        default: ¿
+            _nombre = "Otro";
+        ?
+    ?
+    _imprimir [_nombre, _edad];
+fin

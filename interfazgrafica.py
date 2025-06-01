@@ -26,23 +26,26 @@ def resaltar_sintaxis(event=None):
 
     codigo = txt_codigo.get("1.0", tk.END)
     lexer.input(codigo)
-    for token in lexer:
-        start = f"1.0 + {token.lexpos} chars"
-        end = f"1.0 + {token.lexpos + len(str(token.value))} chars"
-        if token.type in palabras_reservadas.values():
-            txt_codigo.tag_add("reservada", start, end)
-        elif token.type == 'IDENTIFICADOR':
-            txt_codigo.tag_add("identificador", start, end)
-        elif token.type == 'NUMERO':
-            txt_codigo.tag_add("numero", start, end)
-        elif token.type == 'CADENA':
-            txt_codigo.tag_add("cadena", start, end)
-        elif token.type in ('PLUS', 'MINUS', 'TIMES', 'DIVIDE', 'EQUALS', 'EQ', 'NE', 'LT', 'LE', 'GT', 'GE', 'AND', 'OR'):
-            txt_codigo.tag_add("operador", start, end)
-        elif token.type in ('COLON', 'SEMICOLON', 'COMMA', 'LBRACKET', 'RBRACKET', 'LBRACE', 'RBRACE'):
-            txt_codigo.tag_add("simbolo", start, end)
-        else:
-            txt_codigo.tag_add("error", start, end)
+    try:
+        for token in lexer:
+            if token is None:
+                continue
+            start = f"1.0 + {token.lexpos} chars"
+            end = f"1.0 + {token.lexpos + len(str(token.value))} chars"
+            if token.type in palabras_reservadas.values():
+                txt_codigo.tag_add("reservada", start, end)
+            elif token.type == 'IDENTIFICADOR':
+                txt_codigo.tag_add("identificador", start, end)
+            elif token.type == 'NUMERO':
+                txt_codigo.tag_add("numero", start, end)
+            elif token.type == 'CADENA':
+                txt_codigo.tag_add("cadena", start, end)
+            elif token.type in ('PLUS', 'MINUS', 'TIMES', 'DIVIDE', 'EQUALS', 'EQ', 'NE', 'LT', 'LE', 'GT', 'GE', 'AND', 'OR'):
+                txt_codigo.tag_add("operador", start, end)
+            elif token.type in ('COLON', 'SEMICOLON', 'COMMA', 'LBRACKET', 'RBRACKET', 'LBRACE', 'RBRACE'):
+                txt_codigo.tag_add("simbolo", start, end)
+    except Exception as e:
+        print(f"Error en resaltado de sintaxis: {e}")
 
 # Función de compilación
 def compilar(text_widget):
@@ -52,18 +55,22 @@ def compilar(text_widget):
     codigo = text_widget.get("1.0", tk.END)
     lexer.input(codigo)
     tokens = []
-    errores = []
+    errores = set()
 
     # Tokenización y manejo de tabla de símbolos
-    for token in lexer:
-        tokens.append((token.value, token.type))
-        if token.type in ('IDENTIFICADOR', 'NUMERO'):
-            add_symbol(str(token.value), token.type)
-        elif token.type not in (list(palabras_reservadas.values()) + ['PLUS', 'MINUS', 'TIMES', 'DIVIDE', 'EQUALS', 'EQ', 'NE', 'LT', 'LE', 'GT', 'GE', 'AND', 'OR', 'COLON', 'SEMICOLON', 'COMMA', 'LBRACKET', 'RBRACKET', 'LBRACE', 'RBRACE', 'CADENA', 'COMENTARIO']):
-            errores.append(f"Error en línea {token.lineno}: token inválido '{token.value}'")
+    try:
+        for token in lexer:
+            if token is None:
+                continue
+            tokens.append((token.value, token.type))
+            if token.type in ('IDENTIFICADOR', 'NUMERO'):
+                add_symbol(str(token.value), token.type)
+    except Exception as e:
+        errores.add(f"Error léxico: {e}")
 
     # Análisis sintáctico
     try:
+        lexer.input(codigo)  # Reiniciar lexer para el parser
         ast = parser.parse(codigo, lexer=lexer)
         if ast:
             codegen = CodeGenerator()
@@ -71,14 +78,16 @@ def compilar(text_widget):
             txt_errores.insert(tk.END, "Compilación exitosa:\n")
             txt_errores.insert(tk.END, codegen.get_code() + "\n")
         else:
-            errores.append("Error: No se pudo generar el AST")
+            errores.add("Error: No se pudo generar el AST")
     except Exception as e:
-        errores.append(f"Error de sintaxis: {str(e)}")
+        errores.add(f"Error de sintaxis: {str(e)}")
 
     if errores:
         txt_errores.insert(tk.END, "Errores encontrados:\n")
-        for error in errores:
+        for error in sorted(errores):
             txt_errores.insert(tk.END, error + "\n")
+    else:
+        txt_errores.insert(tk.END, "No se encontraron errores.\n")
 
     txt_errores.config(state="disabled")
 
