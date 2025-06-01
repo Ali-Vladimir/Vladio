@@ -1,12 +1,14 @@
 from lexer import lexer
 from parser import parser
 from codegen import CodeGenerator
+from interfazgrafica import add_symbol
 
 def compile_code(source_code):
     # Análisis léxico
     lexer.input(source_code)
-    # for token in lexer:
-    #     print(token)
+    for token in lexer:
+        if token.type in ('IDENTIFICADOR', 'NUMERO'):
+            add_symbol(str(token.value), token.type)
 
     # Análisis sintáctico
     ast = parser.parse(source_code, lexer=lexer)
@@ -21,15 +23,6 @@ def compile_code(source_code):
     print(codegen.get_code())
 
 if __name__ == "__main__":
-    # Ejemplo de código fuente
-    source_code = """
-    x = 5;
-    y = x + 3;
-    if (x < 10) {
-        y = y * 2;
-    }
-    while (y > 0) {
-        y = y - 1;
-    }
-    """
+    with open("texto_ejemplo.txt", "r", encoding="utf-8") as f:
+        source_code = f.read()
     compile_code(source_code)
